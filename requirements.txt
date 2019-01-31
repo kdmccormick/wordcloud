@@ -1,0 +1,4 @@
+mako==1.0.7
+edx-i18n-tools==0.4.7
+
+git+https://github.com/edx/xblock-utils.git@v1.1.1#egg=xblock-utils==1.1.1

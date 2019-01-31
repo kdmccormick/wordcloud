@@ -1,0 +1,43 @@
+{% load i18n %}
+
+<div class=xblock-wordcloud>
+
+    <div id="wordcloud-state" style="visibility: hidden;">{self.state}</div>
+
+    {% if self.display_name %}
+    <h3 class="hd hd-3">${self.display_name}</h3>
+    {% endif %}
+
+    {% if self.instructions is not None %}
+    <div class="input_cloud_section" role="group">
+    {% elif self.display_name %}
+    <div class="input_cloud_section" role="group">
+    {% else %}
+    <div class="input_cloud_section" role="group">
+    {% endif %}
+        {% for row in input_range %}
+            <label>
+                <input
+                    class="input-cloud"
+                    {% if self.submitted %}
+                    style="display: none"
+                    {% endif %}
+                    type="text"
+                    size="40"
+                />
+            </label>
+        {% endfor %}
+
+        <div class="action">
+            <button class="save" type="button">{{_('Save')}}</button>
+        </div>
+    </div>
+
+    <div class="result_cloud_section">
+        <div class="word_cloud"></div>
+        <p class="total_num_words"></p>
+        <p>{{_('Your words were:')}}</p>
+        <ul class="your_words"></ul>
+    </div>
+
+</div>
