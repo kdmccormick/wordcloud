@@ -2,10 +2,10 @@
 
 <div class=xblock-wordcloud>
 
-    <div id="wordcloud-state" style="visibility: hidden;">{self.state}</div>
+    <div id="wordcloud-state" style="visibility: hidden;">{{self.state_json}}</div>
 
     {% if self.display_name %}
-    <h3 class="hd hd-3">${self.display_name}</h3>
+    <h3 class="hd hd-3">{{self.display_name}}</h3>
     {% endif %}
 
     {% if self.instructions is not None %}

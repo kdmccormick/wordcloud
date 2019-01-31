@@ -1,5 +1,7 @@
 """TO-DO: Write a description of what this XBlock is."""
 
+import json
+
 import pkg_resources
 from xblock.core import XBlock
 from xblock.fields import Boolean, Dict, Integer, List, Scope, String
@@ -66,7 +68,7 @@ class WordCloudXBlock(XBlock):
         help=_("All possible words from all learners."),
         scope=Scope.user_state_summary
     )
-    top_words_proportions = Dict(
+    top_words = Dict(
         help=_("Top num_top_words words for word cloud."),
         scope=Scope.user_state_summary
     )
@@ -99,7 +101,13 @@ class WordCloudXBlock(XBlock):
             )
         )
         frag.add_css(self.resource_string("static/css/wordcloud.scss"))
-        frag.add_javascript(self.resource_string("static/js/src/wordcloud.js"))
+        js_urls = [
+            'static/js/lib/d3.min.js',
+            'static/js/lib/d3.layout.cloud.js',
+            'static/js/src/wordcloud.js',
+        ]
+        for url in js_urls: 
+            frag.add_javascript(self.resource_string(url))
         frag.initialize_js('WordCloudXBlock')
         return frag
 
@@ -166,6 +174,10 @@ class WordCloudXBlock(XBlock):
                 'top_words': {}
             }
 
+    @property
+    def state_json(self):
+        return json.dumps(self.state)
+    
 
     def preprocess_word(self, word):
         """Convert raw word to suitable word."""

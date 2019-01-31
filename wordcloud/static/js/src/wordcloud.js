@@ -1,23 +1,46 @@
 
-import * as HtmlUtils from 'edx-ui-toolkit/js/utils/html-utils';
-import d3 from '../lib/d3.min';
-import { cloud as d3Cloud } from '../lib/d3.layout.cloud';
-import gettext from 'gettext';
+var d3Cloud = d3.layout.cloud
+
+/* TODO add real i18n support */
+function gettext(text) { return text }
+
+/* TODO add real HTML escaping */
+function escapeHtml(s) { return s } 
+
+/* Hacky way to replace HtmlUtils.interpolateString */
+if (!String.prototype.format) {
+  String.prototype.format = function() {
+    var args = arguments;
+    return this.replace(/{(\d+)}/g, function(match, number) { 
+      return typeof args[number] != 'undefined'
+        ? args[number]
+        : match
+      ;
+    });
+  };
+}
+
+/* Hacky way to replace HtmlUtils.interpolateHtml */
+String.prototype.formatHtml = function() {
+  escapeHtml(this.format(arguments))
+}
 
 
 /* Javascript for WordCloudXBlock. */
 function WordCloudXBlock(runtime, element) {
 
-    this.wordCloudEl = $(el).find('.word_cloud');
+  this.init = function() {
+    this.wordCloudEl = $(element).find('.word_cloud');
     this.width = 635;
     this.height = 635;
     var state = JSON.parse($('#wordcloud-state')[0].innerHTML);
     if (state.submitted) {
         this.showWordCloud(state)
     }
-    $(el).find('.save').on('click', () => {
+    $(element).find('.save').on('click', () => {
       this.submitAnswer();
     });
+  }
 
 
   /**
@@ -27,7 +50,7 @@ function WordCloudXBlock(runtime, element) {
   * server, and upon receiving correct response, will call the function to generate the
   * word cloud.
   */
-  submitAnswer() {
+  this.submitAnswer = function() {
     var student_words = []
 
     // Populate the data to be sent to the server with user's words.
@@ -35,14 +58,14 @@ function WordCloudXBlock(runtime, element) {
       student_words.push($(value).val())
     });
 
+    console.log(student_words)
+
     // Send the data to the server as an AJAX request. Attach a callback that will
     // be fired on server's response.
-    $.ajax(
-        type: "POST",
+    $.post({
         url: runtime.handlerUrl(element, 'submit'),
-        async: async,
-        data: { student_words: student_words }
-    ).done(
+        data: JSON.stringify({ student_words: student_words })
+    }).done(
       (response) => {
         if (response.status !== 'success') {
           return;
@@ -61,7 +84,7 @@ function WordCloudXBlock(runtime, element) {
   * This function will set up everything for d3 and launch the draw method. Among other things,
   * iw will determine maximum word size.
   */
-  showWordCloud(response) {
+  this.showWordCloud = function(response) {
     const words = response.top_words;
     let maxSize = 0;
     let minSize = 10000;
@@ -137,7 +160,7 @@ function WordCloudXBlock(runtime, element) {
   * box where all of the words fir, second object is the bottom-right coordinates of the bounding box. Each
   * coordinate object contains two properties: 'x', and 'y'.
   */
-  drawWordCloud(response, words, bounds) {
+  this.drawWordCloud = function(response, words, bounds) {
     // Color words in different colors.
     const fill = d3.scale.category20();
 
@@ -166,17 +189,11 @@ function WordCloudXBlock(runtime, element) {
     $.each(response.student_words, (word, stat) => {
       const percent = (response.display_student_percents) ? ` ${Math.round(100 * (stat / response.total_count))}%` : '';
 
-      studentWordsKeys.push(HtmlUtils.interpolateHtml(
-        '{listStart}{startTag}{word}{endTag}{percent}{listEnd}',
-        {
-          listStart: HtmlUtils.HTML('<li>'),
-          startTag: HtmlUtils.HTML('<strong>'),
-          word,
-          endTag: HtmlUtils.HTML('</strong>'),
-          percent,
-          listEnd: HtmlUtils.HTML('</li>'),
-        },
-      ).toString());
+      studentWordsKeys.push(
+        '{0}{1}{2}{3}{4}{5}'.formatHtml(
+          '<li>', '<strong>', word, '<strong>', percent, '</li>'
+        )
+      )
     });
 
     // Comma separated string of user enetered words.
@@ -185,22 +202,13 @@ function WordCloudXBlock(runtime, element) {
     cloudSectionEl
     .addClass('active');
 
-    HtmlUtils.setHtml(
-      cloudSectionEl.find('.your_words'),
-      HtmlUtils.HTML(studentWordsStr),
-    );
+    cloudSectionEl.find('.your_words').html(escapeHtml(studentWordsStr))
 
-    HtmlUtils.setHtml(
-      cloudSectionEl.find('.your_words').end().find('.total_num_words'),
-      HtmlUtils.interpolateHtml(
-        gettext('{start_strong}{total}{end_strong} words submitted in total.'),
-        {
-          start_strong: HtmlUtils.HTML('<strong>'),
-          end_strong: HtmlUtils.HTML('</strong>'),
-          total: response.total_count,
-        },
-      ),
-    );
+    cloudSectionEl.find('.your_words').end().find('.total_num_words').html(
+      '{0}{1}{2} words submitted in total.'.format(
+        '<strong>', response.total_count, '</strong>'
+      )
+    )
 
     $(`${cloudSectionEl.attr('id')} .word_cloud`).empty();
 
@@ -218,20 +226,14 @@ function WordCloudXBlock(runtime, element) {
       wcCount += 1;
       return wcCount;
     })
-    .attr('aria-describedby', () => HtmlUtils.interpolateHtml(
-      gettext('text_word_{uniqueId} title_word_{uniqueId}'),
-      {
-        uniqueId: generateUniqueId(cloudSectionEl.attr('id'), $(this).data('id')),
-      },
+    .attr('aria-describedby', () => gettext('text_word_{0} title_word_{0}').formatHtml(
+        generateUniqueId(cloudSectionEl.attr('id'), $(this).data('id')),
     ));
 
     groupEl
     .append('title')
-    .attr('id', () => HtmlUtils.interpolateHtml(
-      gettext('title_word_{uniqueId}'),
-      {
-        uniqueId: generateUniqueId(cloudSectionEl.attr('id'), $(this).parent().data('id')),
-      },
+    .attr('id', () => gettext('title_word_{0}').formatHtml(
+      generateUniqueId(cloudSectionEl.attr('id'), $(this).parent().data('id')),
     ))
     .text((d) => {
       let res = '';
@@ -247,11 +249,8 @@ function WordCloudXBlock(runtime, element) {
 
     groupEl
     .append('text')
-    .attr('id', () => HtmlUtils.interpolateHtml(
-      gettext('text_word_{uniqueId}'),
-      {
-        uniqueId: generateUniqueId(cloudSectionEl.attr('id'), $(this).parent().data('id')),
-      },
+    .attr('id', () => gettext('text_word_{0}').formatHtml(
+      generateUniqueId(cloudSectionEl.attr('id'), $(this).parent().data('id')),
     ))
     .style('font-size', d => `${d.size}px`)
     .style('font-family', 'Impact')
@@ -262,9 +261,11 @@ function WordCloudXBlock(runtime, element) {
   }
 
 
-  function generateUniqueId(wordCloudId, counter) {
+  this.generateUniqueId = function(wordCloudId, counter) {
     return `_wc_${wordCloudId}_${counter}`;
   }
+
+  this.init()
 }
 
 
